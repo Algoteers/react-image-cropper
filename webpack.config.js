@@ -1,38 +1,18 @@
 var webpack = require('webpack');
-var path = require('path');
-var ProgressBarPlugin = require('progress-bar-webpack-plugin');
-var ForceCaseSensitivityPlugin = require('force-case-sensitivity-webpack-plugin');
-var NODE_ENV = process.env.NODE_ENV
-var publicPath = '/dist/';
+var publicPath = process.env.NODE_ENV === 'dev' ? '/dist/' : '';
 
 module.exports = {
-    plugins: [
-        new ProgressBarPlugin(),
-        new webpack.optimize.OccurrenceOrderPlugin(),
-        new webpack.HotModuleReplacementPlugin(),
-        new webpack.NoEmitOnErrorsPlugin(),
-        new ForceCaseSensitivityPlugin()
-    ],
-    resolve: {
-        alias: {
-            "react": path.resolve('./node_modules/react'),
-            "react-router-dom": path.resolve('./node_modules/react-router-dom')
-        },
-    },
-    entry: { 
-        app: NODE_ENV === 'dev' ? 
-                [
-                    "./demo/demo.js", 
-                    "webpack-hot-middleware/client?path=/__webpack_hmr&timeout=2000&overlay=false"
-                ]
-                : './demo/demo.js',
-    },
+    entry: "./demo/demo.js",
     output: {
         path: path.join(__dirname, 'dist'),
         filename: 'app.js',
         publicPath: publicPath,
     },
-
+    plugins: [
+        new webpack.optimize.OccurenceOrderPlugin(),
+        new webpack.NoErrorsPlugin(),
+    ],
+    devtool: 'source-map',
     module: {
         rules: [
             {
