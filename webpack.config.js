@@ -1,5 +1,6 @@
-var webpack = require('webpack');
-var publicPath = process.env.NODE_ENV === 'dev' ? '/dist/' : '';
+const webpack = require('webpack');
+const path = require('path');
+const publicPath = process.env.NODE_ENV === 'dev' ? '/dist/' : '';
 
 module.exports = {
     entry: "./demo/demo.js",
