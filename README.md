@@ -1,6 +1,7 @@
 
-# collaborators wanted
-I have barely no time work on improve this project, needs collaborators for project maintenance.
+# Forked from original [React Image Cropper](https://github.com/jerryshew/react-image-cropper/blob/master/LICENSE)
+Package no longer seemed to be maintained and required upgrading of package npm-run-all from critical security vulnerability.
+Also merged in [LiHuang2's react16update](https://github.com/lihuang2/react-image-cropper.git) branch.
 
 ## React Image Cropper
 
