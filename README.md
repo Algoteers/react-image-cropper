@@ -1,12 +1,9 @@
 
 # Forked from original [React Image Cropper](https://github.com/jerryshew/react-image-cropper/blob/master/LICENSE)
 Package no longer seemed to be maintained and required upgrading of package npm-run-all from critical security vulnerability.
-Also merged in [LiHuang2's react16update](https://github.com/lihuang2/react-image-cropper.git) branch.
+Also merged in [LiHuang2's react16update](https://github.com/lihuang2/react-image-cropper.git) branch. Upgraded to Webpack 4.
 
 ## React Image Cropper
-
-[![Downloads](https://img.shields.io/npm/dt/react-image-cropper.svg)](https://www.npmjs.com/package/react-image-cropper)
-[![Version](https://img.shields.io/npm/v/react-image-cropper.svg)](https://www.npmjs.com/package/react-image-cropper)
 
 A React.JS Image Cropper
 Touch supported
@@ -21,7 +18,7 @@ Custom:
 
 ### How to Use
 
-+ `import {Cropper} from 'react-image-cropper'`
++ `import Cropper from '@bearcanrun/react-image-cropper'`
 
 + styles are all inline
 
@@ -76,16 +73,16 @@ values:
 
 | prop  |  value   |
 |:-------:|:--------|
-| rate | width / height |
+| ratio | width / height |
 | disabled | boolean |
 | width | cropper frame width |
 | height | cropper frame height |
-| originX | cropper original position(x axis), accroding to image left |
-| originY | cropper original position(Y axis), accroding to image top |
+| originX | cropper original position(x axis), according to image left |
+| originY | cropper original position(Y axis), according to image top |
 | fixedRatio | turn on/off fixed ratio (bool default true) |
 | allowNewSelection | allow user to create a new selection instead of reusing initial selection (bool default true) |
 | styles | specify styles to override inline styles |
-| imageLoaded | specify fuction callback to run when the image completed loading |
+| imageLoaded | specify function callback to run when the image completed loading |
 | beforeImageLoaded | specify function callback to run when the image size value is ready but the image has not completed loading |
 | imageLoadError | specify function callback to run when the image errors during loading |
 | onDragStop | specify function callback to run when dragging the crop has ended |
