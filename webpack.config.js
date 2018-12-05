@@ -1,82 +1,96 @@
-var webpack = require('webpack');
-var path = require('path');
-var ProgressBarPlugin = require('progress-bar-webpack-plugin');
-var ForceCaseSensitivityPlugin = require('force-case-sensitivity-webpack-plugin');
-var NODE_ENV = process.env.NODE_ENV
-var publicPath = '/dist/';
+const webpack = require('webpack')
+const path = require('path')
+const MiniCssExtractPlugin = require('mini-css-extract-plugin')
+const UglifyJsPlugin = require('uglifyjs-webpack-plugin')
+const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin')
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer')
+  .BundleAnalyzerPlugin
+
+const publicPath = '/dist/'
 
 module.exports = {
-    plugins: [
-        new ProgressBarPlugin(),
-        new webpack.optimize.OccurrenceOrderPlugin(),
-        new webpack.HotModuleReplacementPlugin(),
-        new webpack.NoEmitOnErrorsPlugin(),
-        new ForceCaseSensitivityPlugin()
-    ],
-    resolve: {
-        alias: {
-            "react": path.resolve('./node_modules/react'),
-            "react-router-dom": path.resolve('./node_modules/react-router-dom')
-        },
-    },
-    entry: { 
-        app: NODE_ENV === 'dev' ? 
-                [
-                    "./demo/demo.js", 
-                    "webpack-hot-middleware/client?path=/__webpack_hmr&timeout=2000&overlay=false"
-                ]
-                : './demo/demo.js',
-    },
-    output: {
-        path: path.join(__dirname, 'dist'),
-        filename: 'app.js',
-        publicPath: publicPath,
-    },
-
-    module: {
-        rules: [
-            {
-                test: /\.css$/,
-                use: [
-                    'style-loader',
-                    'less-loader',
-                    {
-                        loader: 'postcss-loader',
-                        options: {
-                            plugins: [require('autoprefixer')]
-                        }
-                    }
-                ],
-            },
-            {
-                test: /\.less$/,
-                use: [
-                    'style-loader',
-                    'css-loader',
-                    {
-                        loader: 'postcss-loader',
-                        options: {
-                            plugins: [require('autoprefixer')]
-                        }
-                    },
-                    'less-loader',
-                ],
-            },
-            {
-                test: /\.(png|jpg)$/,
-                use: 'url-loader?limit=8192&name=./image/[name].[ext]'
-            }, {
-                test: /\.js$/,
-                exclude: /(node_modules|bower_components)/,
-                use: "babel-loader",
-            }, {
-                test: /\.jsx?$/,
-                exclude: /(node_modules|bower_components)/,
-                use: 'babel-loader',
-            }, {
-                test: /\.(ttf|eot|svg|woff(2)?)(\?[a-z0-9]+)?$/,
-                use: 'url-loader?limit=10000&name=./font/[name].[ext]'
-            }
-        ],
+  entry: ['babel-polyfill', './demo/demo.js'],
+  mode: 'production',
+  devtool: 'inline-sourcemap',
+  output: {
+    path: path.join(__dirname, 'dist'),
+    filename: 'app.js',
+    publicPath: publicPath
+  },
+  resolve: {
+    alias: {
+      'react': path.resolve('./node_modules/react'),
+      'react-router-dom': path.resolve('./node_modules/react-router-dom')
     }
-};
+  },
+  optimization: {
+    minimizer: [
+      new UglifyJsPlugin({
+        cache: true,
+        parallel: true,
+        sourceMap: false
+      }),
+      new OptimizeCSSAssetsPlugin({})
+    ],
+    splitChunks: {
+      cacheGroups: {
+        styles: {
+          name: 'styles',
+          test: /\.css$/,
+          chunks: 'all',
+          enforce: true
+        }
+      }
+    }
+  },
+  plugins: [
+    new MiniCssExtractPlugin({
+      filename: '[name].css',
+      chunkFilename: '[id].css'
+    }),
+    new webpack.DefinePlugin({
+      'process.env.NODE_ENV': JSON.stringify('production')
+    }),
+    new BundleAnalyzerPlugin({
+      analyzerMode: 'static',
+      reportFilename: 'report.html'
+    })
+  ],
+  module: {
+    rules: [
+      { test: /\.js$/, exclude: /node_modules/, loader: 'babel-loader' },
+      {
+        test: /\.(png|svg|jpg|gif)$/,
+        use: [{ loader: 'file-loader' }]
+      },
+      {
+        test: /\.js$/,
+        exclude: /node_modules/,
+        use: {
+          loader: 'babel-loader'
+        }
+      },
+      {
+        test: /\.(sa|sc|c)ss$/,
+        use: [
+          MiniCssExtractPlugin.loader,
+          { loader: 'css-loader', options: { importLoaders: 2 } },
+          'postcss-loader',
+          { loader: 'sass-loader' }
+        ]
+      },
+      {
+        test: /\.(less)$/,
+        use: [
+          MiniCssExtractPlugin.loader,
+          'css-loader',
+          'less-loader'
+        ]
+      },
+      {
+        test: /\.(ttf|eot|svg|woff(2)?)(\?[a-z0-9]+)?$/,
+        use: [{ loader: 'file-loader' }]
+      }
+    ]
+  }
+}

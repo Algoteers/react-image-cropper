@@ -1,919 +1,901 @@
-const React = require('react')
-const { Component } = React
-const ReactDOM = require('react-dom')
-const deepExtend = require('deep-extend')
-const PropTypes = require('prop-types')
-const { findDOMNode } = ReactDOM
+import React from 'react'
+import ReactDOM from 'react-dom'
+import deepExtend from 'deep-extend'
+import PropTypes from 'prop-types'
 
-class Cropper extends Component {
+class Cropper extends React.Component {
   constructor (props) {
     super(props)
-    const {
+    let {
       originX,
       originY,
       width,
       height,
+      selectionNatural,
       fixedRatio,
-      ratio,
+      allowNewSelection,
+      rate,
       styles,
-      src
-    } = props
-
+      imageLoaded,
+      beforeImageLoaded,
+      imageLoadError,
+      onDragStop
+    } = this.props
     this.state = {
-      // image and clone image src
-      src,
-      // background image width
-      imgWidth: '100%',
-      // background image height
-      imgHeight: 'auto',
-      // cropper width, drag trigger changing
-      frameWidth4Style: width,
-      // cropper height, drag trigger changing
-      frameHeight4Style: fixedRatio ? (width / ratio) : height,
-      // cropper height, drag trigger changing
-      toImgTop4Style: 0,
-      toImgLeft4Style: 0,
-      // cropper original position(x axis), accroding to image left
+      img_width: '100%',
+      img_height: 'auto',
+      imgWidth: 200,
+      imgHeight: 200,
+      imgTop: 0,
+      imgLeft: 0,
       originX,
-      // cropper original position(y axis), accroding to image top
       originY,
-      // dragging start, position's pageX and pageY
-      startPageX: 0,
-      startPageY: 0,
-      // frame width, change only dragging stop
+      startX: 0,
+      startY: 0,
       frameWidth: width,
-      // frame height, change only dragging stop
-      frameHeight: fixedRatio ? (width / ratio) : height,
+      fixedRatio,
+      selectionNatural,
+      allowNewSelection,
+      frameHeight: fixedRatio ? width / rate : height,
       dragging: false,
       maxLeft: 0,
       maxTop: 0,
       action: null,
       imgLoaded: false,
-      styles: deepExtend({}, defaultStyles, styles)
+      imgBeforeLoaded: false,
+      styles: deepExtend({}, defaultStyles, styles),
+      imageLoaded,
+      beforeImageLoaded,
+      imageLoadError,
+      onDragStop,
+      moved: false,
+      originalOriginX: originX,
+      originalOriginY: originY,
+      originalFrameWidth: width,
+      originalFrameHeight: fixedRatio ? width / rate : height
     }
+    this.handleDragStart = this.handleDragStart.bind(this)
+    this.imgOnLoad = this.imgOnLoad.bind(this)
+    this.imgOnError = this.imgOnError.bind(this)
   }
 
-  // initialize style, component did mount or component updated.
   initStyles () {
-    const container = findDOMNode(this.container)
-    this.setState({
-      imgWidth: container.offsetWidth
-    }, () => {
-      // calc frame width height
-      let {
-        originX,
-        originY,
-        disabled
-      } = this.props
+    let { originX, originY } = this.props
+    const { selectionNatural, img_width, img_height } = this.state
 
-      if (disabled) return
+    let frameWidth = this.state.frameWidth || img_width
+    let frameHeight = this.state.frameHeight || img_height / 4
+    if (selectionNatural) {
+      let img = ReactDOM.findDOMNode(this.refs.img)
+      const _rateWidth = img_width / img.naturalWidth
+      const _rateHeight = img_height / img.naturalHeight
+      const realWidth = Number(frameWidth * _rateWidth)
+      const realHeight = Number(frameHeight * _rateHeight)
+      const realX = Number(originX * _rateHeight)
+      const realY = Number(originY * _rateWidth)
 
-      const {
-        imgWidth,
-        imgHeight
-      } = this.state
-      let {
-        frameWidth,
-        frameHeight
-      } = this.state
-
-      const maxLeft = imgWidth - frameWidth
-      const maxTop = imgHeight - frameHeight
-
-      if (originX + frameWidth >= imgWidth) {
-        originX = imgWidth - frameWidth
-        this.setState({
-          originX
-        })
-      }
-      if (originY + frameHeight >= imgHeight) {
-        originY = imgHeight - frameHeight
-        this.setState({
-          originY
-        })
-      }
+      frameWidth = realWidth
+      frameHeight = realHeight
+      originX = realX
+      originY = realY
 
       this.setState({
-        maxLeft,
-        maxTop
+        frameWidth: frameWidth,
+        frameHeight: frameHeight,
+        originX: originX,
+        originY: originY
       })
-      // calc clone position
-      this.calcPosition(frameWidth, frameHeight, originX, originY, () => {
-        const {
-          frameWidth4Style,
-          frameHeight4Style,
-          toImgTop4Style,
-          toImgLeft4Style
-        } = this.state
+    }
 
-        this.setState({
-          frameWidth: frameWidth4Style,
-          frameHeight: frameHeight4Style,
-          originX: toImgLeft4Style,
-          originY: toImgTop4Style
-        })
-      })
+    const maxLeft = img_width - frameWidth
+    const maxTop = img_height - frameHeight
+
+    if (originX + frameWidth >= img_width) {
+      originX = img_width - frameWidth
+      this.setState({ originX })
+    }
+    if (originY + frameHeight >= img_height) {
+      originY = img_height - frameHeight
+      this.setState({ originY })
+    }
+    this.setState({ maxLeft, maxTop, img_height })
+    // calc clone position
+    this.calcPosition(frameWidth, frameHeight, originX, originY)
+  }
+  updateFrame (newWidth, newHeight, newOriginX, newOriginY) {
+    this.setState(
+      {
+        frameWidth: newWidth,
+        frameHeight: newHeight,
+        originX: newOriginX,
+        originY: newOriginY,
+        originalFrameWidth: newWidth,
+        originalFrameHeight: newHeight,
+        originalOriginX: newOriginX,
+        originalOriginY: newOriginY
+      },
+      () => {
+        this.initStyles()
+      }
+    )
+  }
+
+  calcPosition (width, height, left, top, move) {
+    const { img_width, img_height, fixedRatio } = this.state
+    const { rate } = this.props
+
+    if (width < 0 || height < 0) return false
+    if (fixedRatio) {
+      if (width / img_width > height / img_height) {
+        if (width > img_width) {
+          width = img_width
+          left = 0
+          if (fixedRatio) {
+            height = width / rate
+          }
+        }
+      } else {
+        if (height > img_height) {
+          height = img_height
+          top = 0
+          if (fixedRatio) {
+            width = height * rate
+          }
+        }
+      }
+    }
+
+    if (width + left > img_width) {
+      if (fixedRatio) {
+        left = img_width - width
+      } else {
+        width = width - (width + left - img_width)
+      }
+    }
+
+    if (height + top > img_height) {
+      if (fixedRatio) {
+        top = img_height - height
+      } else {
+        height = height - (height + top - img_height)
+      }
+    }
+
+    if (left < 0) {
+      if (!fixedRatio && !move) {
+        width = width + left
+      }
+      left = 0
+    }
+    if (top < 0) {
+      if (!fixedRatio && !move) {
+        height = height + top
+      }
+      top = 0
+    }
+
+    if (width > img_width) {
+      width = img_width
+    }
+    if (height > img_height) {
+      height = img_height
+    }
+
+    this.setState({
+      imgLeft: left,
+      imgTop: top,
+      imgWidth: width,
+      imgHeight: height
     })
   }
 
+  imgOnLoad () {
+    if (this.state.imageLoaded) {
+      const { imageLoaded } = this.state
+      this.setState({ imgLoaded: true })
+      imageLoaded()
+    }
+  }
+
+  imgOnError () {
+    if (this.state.imageLoadError) {
+      const { imageLoadError } = this.state
+      this.setState({ imgLoaded: false })
+      imageLoadError({ error: 'Error loading image' })
+    }
+  }
+
+  imgGetSizeBeforeLoad () {
+    var that = this
+    setTimeout(function () {
+      let img = ReactDOM.findDOMNode(that.refs.img)
+      if (img && img.naturalWidth) {
+        const { beforeImageLoaded } = that.state
+
+        var heightRatio = img.offsetWidth / img.naturalWidth
+        var widthRatio = img.offsetHeight / img.naturalHeight
+
+        var img_height = Number(img.naturalHeight * heightRatio)
+        var img_width = Number(img.naturalWidth * widthRatio)
+
+        let imgSize = that.props.imgSize
+        if (imgSize && imgSize.default_width && imgSize.default_height) {
+          img_width =
+            img.naturalWidth > img.naturalHeight
+              ? imgSize.default_width
+              : (imgSize.default_width * img.naturalWidth) / img.naturalHeight
+          img_height =
+            img.naturalHeight > img.naturalWidth
+              ? imgSize.default_height
+              : (imgSize.default_height * img.naturalHeight) / img.naturalWidth
+        }
+
+        that.setState(
+          {
+            img_height: img_height,
+            img_width: img_width,
+            imgBeforeLoaded: true
+          },
+          () => that.initStyles()
+        )
+
+        beforeImageLoaded()
+      } else if (img) {
+        that.imgGetSizeBeforeLoad()
+      }
+    }, 0)
+  }
+
+  createNewFrame (e) {
+    if (this.state.dragging) {
+      const pageX = e.pageX ? e.pageX : e.targetTouches[0].pageX
+      const pageY = e.pageY ? e.pageY : e.targetTouches[0].pageY
+      const { rate } = this.props
+      const {
+        frameWidth,
+        frameHeight,
+        startX,
+        startY,
+        offsetLeft,
+        offsetTop,
+        fixedRatio
+      } = this.state
+
+      const _x = pageX - startX
+      const _y = pageY - startY
+
+      if (_x > 0) {
+        if (_y < 0) {
+          return this.calcPosition(
+            frameWidth + _x,
+            fixedRatio ? (frameWidth + _x) / rate : frameHeight - _y,
+            offsetLeft,
+            fixedRatio ? offsetTop - _x / rate : offsetTop + _y
+          )
+        }
+        return this.calcPosition(
+          frameWidth + _x,
+          fixedRatio ? (frameWidth + _x) / rate : frameHeight + _y,
+          offsetLeft,
+          offsetTop
+        )
+      }
+      if (_y > 0) {
+        return this.calcPosition(
+          frameWidth - _x,
+          fixedRatio ? (frameWidth - _x) / rate : frameHeight + _y,
+          offsetLeft + _x,
+          offsetTop
+        )
+      }
+
+      return this.calcPosition(
+        frameWidth - _x,
+        fixedRatio ? (frameWidth - _x) / rate : frameHeight - _y,
+        offsetLeft + _x,
+        fixedRatio ? offsetTop + _x / rate : offsetTop + _y
+      )
+    }
+  }
+
+  handleDrag (e) {
+    if (this.state.dragging) {
+      e.preventDefault()
+      let { action } = this.state
+      if (!action) return this.createNewFrame(e)
+      if (action == 'move') return this.frameMove(e)
+      this.frameDotMove(action, e)
+    }
+  }
+
+  frameMove (e) {
+    const {
+      originX,
+      originY,
+      startX,
+      startY,
+      frameWidth,
+      frameHeight,
+      maxLeft,
+      maxTop
+    } = this.state
+    const pageX = e.pageX ? e.pageX : e.targetTouches[0].pageX
+    const pageY = e.pageY ? e.pageY : e.targetTouches[0].pageY
+    let _x = pageX - startX + originX
+    let _y = pageY - startY + originY
+    if (pageX < 0 || pageY < 0) return false
+
+    if (pageX - startX > 0 || pageY - startY) {
+      this.setState({ moved: true })
+    }
+
+    if (_x > maxLeft) _x = maxLeft
+    if (_y > maxTop) _y = maxTop
+    this.calcPosition(frameWidth, frameHeight, _x, _y, true)
+  }
+
+  handleDragStart (e) {
+    const { allowNewSelection } = this.state
+    const action = e.target.getAttribute('data-action')
+      ? e.target.getAttribute('data-action')
+      : e.target.parentNode.getAttribute('data-action')
+    const pageX = e.pageX ? e.pageX : e.targetTouches[0].pageX
+    const pageY = e.pageY ? e.pageY : e.targetTouches[0].pageY
+    if (action || allowNewSelection) {
+      e.preventDefault()
+      this.setState({
+        startX: pageX,
+        startY: pageY,
+        dragging: true,
+        action
+      })
+    }
+    if (!action && allowNewSelection) {
+      let container = ReactDOM.findDOMNode(this.refs.container)
+      const { offsetLeft, offsetTop } = container
+      this.setState(
+        {
+          offsetLeft: pageX - offsetLeft,
+          offsetTop: pageY - offsetTop,
+          frameWidth: 2,
+          frameHeight: 2,
+          moved: true
+        },
+        () => {
+          this.calcPosition(2, 2, pageX - offsetLeft, pageY - offsetTop)
+        }
+      )
+    }
+  }
+
+  handleDragStop (e) {
+    if (this.state.dragging) {
+      e.preventDefault()
+      const frameNode = ReactDOM.findDOMNode(this.refs.frameNode)
+      const { offsetLeft, offsetTop, offsetWidth, offsetHeight } = frameNode
+      const { img_width, img_height, onDragStop } = this.state
+      this.setState(
+        {
+          originX: offsetLeft,
+          originY: offsetTop,
+          dragging: false,
+          frameWidth: offsetWidth,
+          frameHeight: offsetHeight,
+          maxLeft: img_width - offsetWidth,
+          maxTop: img_height - offsetHeight,
+          action: null
+        },
+        function () {
+          onDragStop(this.values())
+        }
+      )
+    }
+  }
+
   componentDidMount () {
-    // event
     document.addEventListener('mousemove', this.handleDrag.bind(this))
     document.addEventListener('touchmove', this.handleDrag.bind(this))
     document.addEventListener('mouseup', this.handleDragStop.bind(this))
     document.addEventListener('touchend', this.handleDragStop.bind(this))
     this.imgGetSizeBeforeLoad()
   }
-
   componentWillUnmount () {
-    // remove event
     document.removeEventListener('mousemove', this.handleDrag.bind(this))
     document.removeEventListener('touchmove', this.handleDrag.bind(this))
     document.removeEventListener('mouseup', this.handleDragStop.bind(this))
     document.removeEventListener('touchend', this.handleDragStop.bind(this))
   }
-
-  // props change to update frame
   componentWillReceiveProps (newProps) {
-    const {
-      width,
-      height,
-      originX,
-      originY
-    } = this.props
+    var width = this.props.width !== newProps.width
+    var height = this.props.height !== newProps.height
+    var originX = this.props.originX !== newProps.originX
+    var originY = this.props.originY !== newProps.originY
 
-    // img src changed
-    if (this.props.src !== newProps.src) {
-      return this.setState({
-        src: newProps.src
-      }, this.imgGetSizeBeforeLoad)
-    }
-
-    if (width !== newProps.width ||
-      height !== newProps.height ||
-      originX !== newProps.originX ||
-      originY !== newProps.originY) {
-      // update frame
-      this.setState({
-        frameWidth: newProps.width,
-        frameHeight: newProps.height,
-        originX: newProps.originX,
-        originY: newProps.originY
-      }, () => this.initStyles())
+    if (width || height || originX || originY) {
+      this.updateFrame(
+        newProps.width,
+        newProps.height,
+        newProps.originX,
+        newProps.originY
+      )
     }
   }
-
-  // image onloaded hook
-  imgOnLoad () {
-    this.props.onImgLoad()
-  }
-
-  // adjust image height when image size scaleing change, also initialize styles
-  imgGetSizeBeforeLoad () {
-    // trick way to get natural width of image after component did mount
-    setTimeout(() => {
-      const img = findDOMNode(this.img)
-      if (img && img.naturalWidth) {
-        // image scaleing
-        const imgHeight = parseInt(img.offsetWidth / img.naturalWidth * img.naturalHeight)
-        // resize imgHeight
-        this.setState({
-          imgHeight,
-          imgLoaded: true
-        }, this.initStyles)
-        // before image loaded hook
-        this.props.beforeImgLoad()
-      } else if (img) {
-        // catch if image natural width is 0
-        this.imgGetSizeBeforeLoad()
-      }
-    }, 0)
-  }
-
-  // frame width, frame height, position left, position top
-  calcPosition (width, height, left, top, callback) {
-    const {
-      imgWidth,
-      imgHeight
-    } = this.state
-    const {
-      ratio,
-      fixedRatio
-    } = this.props
-    // width < 0 or height < 0, frame invalid
-    if (width < 0 || height < 0) return false
-    // if ratio is fixed
-    if (fixedRatio) {
-      // adjust by width
-      if (width / imgWidth > height / imgHeight) {
-        if (width > imgWidth) {
-          width = imgWidth
-          left = 0
-          height = width / ratio
-        }
-      } else {
-        // adjust by height
-        if (height > imgHeight) {
-          height = imgHeight
-          top = 0
-          width = height * ratio
-        }
-      }
-    }
-    // frame width plus offset left, larger than img's width
-    if (width + left > imgWidth) {
-      if (fixedRatio) {
-        // if fixed ratio, adjust left with width
-        left = imgWidth - width
-      } else {
-        // resize width with left
-        width = width - ((width + left) - imgWidth)
-      }
-    }
-    // frame heigth plust offset top, larger than img's height
-    if (height + top > imgHeight) {
-      if (fixedRatio) {
-        // if fixed ratio, adjust top with height
-        top = imgHeight - height
-      } else {
-        // resize height with top
-        height = height - ((height + top) - imgHeight)
-      }
-    }
-    // left is invalid
-    if (left < 0) {
-      left = 0
-    }
-    // top is invalid
-    if (top < 0) {
-      top = 0
-    }
-    // if frame width larger than img width
-    if (width > imgWidth) {
-      width = imgWidth
-    }
-    // if frame height larger than img height
-    if (height > imgHeight) {
-      height = imgHeight
-    }
-    this.setState({
-      toImgLeft4Style: left,
-      toImgTop4Style: top,
-      frameWidth4Style: width,
-      frameHeight4Style: height
-    }, () => {
-      if (callback) callback()
-    })
-  }
-
-  // create a new frame, and drag, so frame width and height is became larger.
-  createNewFrame (e) {
-    if (this.state.dragging) {
-      // click or touch event
-      const {
-        pageX,
-        pageY
-      } = e.pageX ? e : e.targetTouches[0]
-
-      const {
-        ratio,
-        fixedRatio
-      } = this.props
-
-      const {
-        frameWidth,
-        frameHeight,
-        startPageX,
-        startPageY,
-        originX,
-        originY
-      } = this.state
-      // click or touch point's offset from source image top
-      const _x = pageX - startPageX
-      const _y = pageY - startPageY
-
-      // frame new width, height, left, top
-      const _width = frameWidth + Math.abs(_x)
-      const _height = fixedRatio ? (frameWidth + Math.abs(_x)) / ratio : frameHeight + Math.abs(_y)
-      let _left = originX
-      let _top = originY
-
-      if (_y < 0) {
-        // drag and resize to top, top changing
-        _top = fixedRatio ? originY - Math.abs(_x) / ratio : originY - Math.abs(_y)
-      }
-
-      if (_x < 0) {
-        // drag and resize, go to left, left changing
-        _left = originX + _x
-      }
-      // calc position
-      return this.calcPosition(_width, _height, _left, _top)
-    }
-  }
-
-  // frame move handler
-  frameMove (e) {
-    const {
-      originX,
-      originY,
-      startPageX,
-      startPageY,
-      frameWidth,
-      frameHeight,
-      maxLeft,
-      maxTop
-    } = this.state
-
-    const {
-      pageX,
-      pageY
-    } = e.pageX ? e : e.targetTouches[0]
-
-    let _x = pageX - startPageX + originX
-    let _y = pageY - startPageY + originY
-    if (pageX < 0 || pageY < 0) return false
-
-    if (_x > maxLeft) _x = maxLeft
-    if (_y > maxTop) _y = maxTop
-    // frame width, frame height not change, top and left changing
-    this.calcPosition(frameWidth, frameHeight, _x, _y)
-  }
-
-  // drag dot to different direction
   frameDotMove (dir, e) {
+    const pageX = e.pageX ? e.pageX : e.targetTouches[0].pageX
+    const pageY = e.pageY ? e.pageY : e.targetTouches[0].pageY
+    const { rate } = this.props
     const {
-      pageX,
-      pageY
-    } = e.pageX ? e : e.targetTouches[0]
-
-    const {
-      ratio,
-      fixedRatio
-    } = this.props
-
-    const {
-      startPageX,
-      startPageY,
+      startX,
+      startY,
       originX,
       originY,
-      frameWidth4Style,
-      frameHeight4Style,
       frameWidth,
       frameHeight,
-      imgWidth,
-      imgHeight
+      fixedRatio
     } = this.state
 
     if (pageY !== 0 && pageX !== 0) {
-      // current drag position offset x and y to first drag start position
-      const _x = pageX - startPageX
-      const _y = pageY - startPageY
+      const _x = pageX - startX
+      const _y = pageY - startY
 
-      let _width = 0
-      let _height = 0
-      let _top = 0
-      let _left = 0
-      // just calc width, height, left, top in each direction
+      if (pageX - startX > 0 || pageY - startY) {
+        this.setState({ moved: true })
+      }
+
+      let new_width = frameWidth + _x
+      let new_height = fixedRatio ? new_width : frameHeight + _y
       switch (dir) {
         case 'ne':
-          _width = frameWidth + _x
-          _height = fixedRatio ? _width / ratio : frameHeight - _y
-          _left = originX
-          _top = fixedRatio ? (originY - _x / ratio) : originY + _y
-          break
+          new_height = frameHeight - _y
+          return this.calcPosition(
+            new_width,
+            fixedRatio ? new_width / rate : new_height,
+            originX,
+            fixedRatio ? originY - _x / rate : originY + _y
+          )
         case 'e':
-          _width = frameWidth + _x
-          _height = fixedRatio ? _width / ratio : frameHeight
-          _left = originX
-          _top = fixedRatio ? originY - _x / ratio * 0.5 : originY
-          break
+          return this.calcPosition(
+            new_width,
+            fixedRatio ? new_width / rate : frameHeight,
+            originX,
+            fixedRatio ? originY - (_x / rate) * 0.5 : originY
+          )
         case 'se':
-          _width = frameWidth + _x
-          _height = fixedRatio ? _width / ratio : frameHeight + _y
-          _left = originX
-          _top = originY
-          break
+          return this.calcPosition(
+            new_width,
+            fixedRatio ? new_width / rate : new_height,
+            originX,
+            originY
+          )
         case 'n':
-          _height = frameHeight - _y
-          _width = fixedRatio ? _height * ratio : frameWidth
-          _left = fixedRatio ? originX + _y * ratio * 0.5 : originX
-          _top = originY + _y
-          break
+          new_height = frameHeight - _y
+          return this.calcPosition(
+            fixedRatio ? new_height * rate : frameWidth,
+            new_height,
+            fixedRatio ? originX + _y * rate * 0.5 : originX,
+            originY + _y
+          )
         case 'nw':
-          _width = frameWidth - _x
-          _height = fixedRatio ? _width / ratio : frameHeight - _y
-          _left = originX + _x
-          _top = fixedRatio ? originY + _x / ratio : originY + _y
-          break
+          new_width = frameWidth - _x
+          new_height = frameHeight - _y
+          return this.calcPosition(
+            new_width,
+            fixedRatio ? new_width / rate : new_height,
+            originX + _x,
+            fixedRatio ? originY + _x / rate : originY + _y
+          )
         case 'w':
-          _width = frameWidth - _x
-          _height = fixedRatio ? _width / ratio : frameHeight
-          _left = originX + _x
-          _top = fixedRatio ? originY + _x / ratio * 0.5 : originY
-          break
+          new_width = frameWidth - _x
+          return this.calcPosition(
+            new_width,
+            fixedRatio ? new_width / rate : frameHeight,
+            originX + _x,
+            fixedRatio ? originY + (_x / rate) * 0.5 : originY
+          )
         case 'sw':
-          _width = frameWidth - _x
-          _height = fixedRatio ? _width / ratio : frameHeight + _y
-          _left = originX + _x
-          _top = originY
-          break
+          new_width = frameWidth - _x
+          return this.calcPosition(
+            new_width,
+            fixedRatio ? new_width / rate : new_height,
+            originX + _x,
+            originY
+          )
         case 's':
-          _height = frameHeight + _y
-          _width = fixedRatio ? _height * ratio : frameWidth
-          _left = fixedRatio ? originX - _y * ratio * 0.5 : originX
-          _top = originY
-          break
+          new_height = frameHeight + _y
+          return this.calcPosition(
+            fixedRatio ? new_height * rate : frameWidth,
+            new_height,
+            fixedRatio ? originX - _y * rate * 0.5 : originX,
+            originY
+          )
         default:
-          break
       }
-
-      if (_width > imgWidth || _height > imgHeight) {
-        if (frameWidth4Style >= imgWidth || frameHeight4Style >= imgHeight) {
-          return false
-        }
-      }
-
-      return this.calcPosition(_width, _height, _left, _top)
     }
   }
 
-  // judge whether to create new frame, frame or frame dot move acroding to action
-  handleDrag (e) {
-    if (this.state.dragging) {
-      e.preventDefault()
-      const {
-        action
-      } = this.state
-
-      if (!action) return this.createNewFrame(e)
-      if (action === 'move') return this.frameMove(e)
-      this.frameDotMove(action, e)
-    }
-  }
-
-  // starting dragging
-  handleDragStart (e) {
-    const {
-      allowNewSelection
-    } = this.props
-
-    const action = e.target.getAttribute('data-action')
-      ? e.target.getAttribute('data-action')
-      : e.target.parentNode.getAttribute('data-action')
-
-    const {
-      pageX,
-      pageY
-    } = e.pageX ? e : e.targetTouches[0]
-
-    // if drag or move or allow new selection, change startPageX, startPageY, dragging state
-    if (action || allowNewSelection) {
-      e.preventDefault()
-      // drag start, set startPageX, startPageY for dragging start point
-      this.setState({
-        startPageX: pageX,
-        startPageY: pageY,
-        dragging: true,
-        action
-      })
-    }
-    // if no action and allowNewSelection, then create a new frame
-    if (!action && allowNewSelection) {
-      const container = findDOMNode(this.container)
-      const {
-        offsetLeft,
-        offsetTop
-      } = container
-
-      this.setState({
-        // set offset left and top of new frame
-        originX: pageX - offsetLeft,
-        originY: pageY - offsetTop,
-        frameWidth: 2,
-        frameHeight: 2
-      }, () => this.calcPosition(2, 2, pageX - offsetLeft, pageY - offsetTop))
-    }
-  }
-
-  // crop image
   crop () {
-    const img = findDOMNode(this.img)
+    const { frameWidth, frameHeight, originX, originY, img_width } = this.state
     let canvas = document.createElement('canvas')
-    const {
-      x,
-      y,
-      width,
-      height
-    } = this.values().original
+    let img = ReactDOM.findDOMNode(this.refs.img)
+    const _rate = img.naturalWidth / img_width
+    const realWidth = frameWidth * _rate
+    const realHeight = frameHeight * _rate
+    canvas.width = realWidth
+    canvas.height = realHeight
 
-    canvas.width = width
-    canvas.height = height
-    canvas.getContext('2d').drawImage(img, x, y, width, height, 0, 0, width, height)
+    canvas
+      .getContext('2d')
+      .drawImage(
+        img,
+        originX * _rate,
+        originY * _rate,
+        realWidth,
+        realHeight,
+        0,
+        0,
+        realWidth,
+        realHeight
+      )
     return canvas.toDataURL()
   }
 
-  // get current values
   values () {
-    const img = findDOMNode(this.img)
     const {
       frameWidth,
       frameHeight,
       originX,
       originY,
-      imgWidth,
-      imgHeight
+      img_width,
+      img_height,
+      selectionNatural,
+      moved,
+      originalOriginX,
+      originalOriginY,
+      originalFrameWidth,
+      originalFrameHeight
     } = this.state
 
-    // crop accroding image's natural width
-    const _scale = img.naturalWidth / imgWidth
-    const realFrameWidth = frameWidth * _scale
-    const realFrameHeight = frameHeight * _scale
-    const realOriginX = originX * _scale
-    const realOriginY = originY * _scale
+    let img = ReactDOM.findDOMNode(this.refs.img)
+    let _return = null
 
-    return {
-      display: {
-        width: frameWidth,
-        height: frameHeight,
-        x: originX,
-        y: originY,
-        imgWidth,
-        imgHeight
-      },
-      original: {
-        width: realFrameWidth,
-        height: realFrameHeight,
-        x: realOriginX,
-        y: realOriginY,
-        imgWidth: img.naturalWidth,
-        imgHeight: img.naturalHeight
+    var thisOriginX = moved ? originX : originalOriginX
+    var thisOriginY = moved ? originY : originalOriginY
+    var thisFrameWidth = moved ? frameWidth : originalFrameWidth
+    var thisFrameHeight = moved ? frameHeight : originalFrameHeight
+
+    if (selectionNatural && moved) {
+      const _rateWidth = img.naturalWidth / img_width
+      const _rateHeight = img.naturalHeight / img_height
+      const realWidth = Number(thisFrameWidth * _rateWidth)
+      const realHeight = Number(thisFrameHeight * _rateHeight)
+      const realX = Number(thisOriginX * _rateHeight)
+      const realY = Number(thisOriginY * _rateWidth)
+      _return = { width: realWidth, height: realHeight, x: realX, y: realY }
+    } else {
+      _return = {
+        width: thisFrameWidth,
+        height: thisFrameHeight,
+        x: thisOriginX,
+        y: thisOriginY
       }
     }
-  }
 
-  // stop dragging
-  handleDragStop (e) {
-    if (this.state.dragging) {
-      e.preventDefault()
-
-      const {
-        offsetLeft,
-        offsetTop,
-        offsetWidth,
-        offsetHeight
-      } = findDOMNode(this.frameNode)
-
-      const {
-        imgWidth,
-        imgHeight
-      } = this.state
-
-      this.setState({
-        originX: offsetLeft,
-        originY: offsetTop,
-        dragging: false,
-        frameWidth: offsetWidth,
-        frameHeight: offsetHeight,
-        maxLeft: imgWidth - offsetWidth,
-        maxTop: imgHeight - offsetHeight,
-        action: null
-      }, () => {
-        const { onChange } = this.props
-        if (onChange) onChange(this.values())
-      })
-    }
+    return _return
   }
 
   render () {
-    const {
-      dragging,
-      imgHeight,
-      imgWidth,
-      imgLoaded,
-      styles,
-      src
-    } = this.state
-
-    const { disabled } = this.props
+    const { dragging, img_height, img_width, imgBeforeLoaded } = this.state
+    const { src, disabled } = this.props
 
     const imageNode = (
-      <div
-        style={styles.source}
-        ref={
-          ref => { this.sourceNode = ref }
-        }
-      >
+      <div style={this.state.styles.source} ref='sourceNode'>
         <img
-          crossOrigin="anonymous"
+          crossOrigin='anonymous'
           src={src}
-          width={imgWidth}
-          height={imgHeight}
-          ref={
-            ref => { this.img = ref }
-          }
-          style = {
-            deepExtend({}, styles.img, styles.source_img)
-          }
-          onLoad={this.imgOnLoad.bind(this)}
+          style={deepExtend(
+            {},
+            this.state.styles.img,
+            this.state.styles.source_img
+          )}
+          ref='img'
+          onLoad={this.imgOnLoad}
+          onError={this.imgOnError}
+          width={img_width}
+          height={img_height}
         />
       </div>
     )
-    // disabled cropper
-    if (disabled) {
-      return (
-        <div
-          style={
-            deepExtend({},
-              styles.container,
-              {
-                'position': 'relative',
-                'height': imgHeight
-              }
-            )
-          }
-          ref={
-            ref => { this.container = ref }
-          }
-        >
-          {imageNode}
-          <div
-            style={deepExtend({}, styles.modal, styles.modal_disabled)}
-          >
-          </div>
-        </div>
-      )
-    }
+
+    let disabledStyle = disabled ? { display: 'none', cursor: 'initial' } : {}
 
     return (
       <div
-        onMouseDown={this.handleDragStart.bind(this)}
-        onTouchStart={this.handleDragStart.bind(this)}
-        style={
-          deepExtend({},
-            styles.container, {
-              'position': 'relative',
-              'height': imgHeight
-            }
-          )
-        }
-        ref={
-          ref => { this.container = ref }
-        }
+        ref='container'
+        onMouseDown={disabled ? undefined : this.handleDragStart}
+        onTouchStart={disabled ? undefined : this.handleDragStart}
+        style={deepExtend({}, this.state.styles.container, {
+          position: 'relative',
+          height: img_height
+        })}
       >
         {imageNode}
-        {
-          imgLoaded
-            ? <div>
-              <div
-                style={styles.modal}
-              >
-              </div>
-              {/* frame container */}
-              <div
-                style={
-                  deepExtend({},
-                    styles.frame,
-                    dragging ? styles.dragging_frame : {}, {
-                      display: 'block',
-                      left: this.state.toImgLeft4Style,
-                      top: this.state.toImgTop4Style,
-                      width: this.state.frameWidth4Style,
-                      height: this.state.frameHeight4Style
-                    }
-                  )
+        {imgBeforeLoaded ? (
+          <div>
+            <div style={this.state.styles.modal} />
+            <div
+              style={deepExtend(
+                {},
+                this.state.styles.frame,
+                dragging ? this.state.styles.dragging_frame : {},
+                {
+                  display: 'block',
+                  left: this.state.imgLeft,
+                  top: this.state.imgTop,
+                  width: this.state.imgWidth,
+                  height: this.state.imgHeight
                 }
-                ref={
-                  ref => { this.frameNode = ref }
-                }
-              >
-                {/* clone img */}
-                <div
-                  style={styles.clone}
-                >
-                  <img
-                    src={src}
-                    crossOrigin="anonymous"
-                    width={imgWidth}
-                    height={imgHeight}
-                    style={
-                      deepExtend({},
-                        styles.img, {
-                          marginLeft: -1 * this.state.toImgLeft4Style,
-                          marginTop: -1 * this.state.toImgTop4Style
-                        }
-                      )
-                    }
-                    ref={
-                      ref => { this.cloneImg = ref }
-                    }
-                  />
-                </div>
-
-                {/* move element */}
-                <span
-                  data-action='move'
-                  style={styles.move}
-                >
-                </span>
-                {/* move center element */}
-                <span
-                  data-action='move'
-                  style={
-                    deepExtend({}, styles.dot, styles.dotCenter)
-                  }
-                >
-                  <span
-                    style={
-                      deepExtend({}, styles.dotInner, styles.dotInnerCenterVertical)
-                    }
-                  >
-                  </span>
-                  <span
-                    style={
-                      deepExtend({}, styles.dotInner, styles.dotInnerCenterHorizontal)
-                    }
-                  >
-                  </span>
-                </span>
-
-                {/* frame dot elements */}
-                <span
-                  data-action="ne"
-                  style={
-                    deepExtend({}, styles.dot, styles.dotNE)
-                  }
-                >
-                  <span
-                    style={
-                      deepExtend({}, styles.dotInner, styles.dotInnerNE)
-                    }
-                  >
-                  </span>
-                </span>
-                <span
-                  data-action="n"
-                  style={
-                    deepExtend({}, styles.dot, styles.dotN)
-                  }
-                >
-                  <span
-                    style={
-                      deepExtend({}, styles.dotInner, styles.dotInnerN)
-                    }
-                  >
-                  </span>
-                </span>
-                <span
-                  data-action="nw"
-                  style={
-                    deepExtend({}, styles.dot, styles.dotNW)
-                  }
-                >
-                  <span
-                    style={
-                      deepExtend({}, styles.dotInner, styles.dotInnerNW)
-                    }
-                  >
-                  </span>
-                </span>
-                <span
-                  data-action="e"
-                  style={
-                    deepExtend({}, styles.dot, styles.dotE)
-                  }
-                >
-                  <span
-                    style={
-                      deepExtend({}, styles.dotInner, styles.dotInnerE)
-                    }
-                  >
-                  </span>
-                </span>
-                <span
-                  data-action="w"
-                  style={
-                    deepExtend({}, styles.dot, styles.dotW)
-                  }
-                >
-                  <span
-                    style={
-                      deepExtend({}, styles.dotInner, styles.dotInnerW)
-                    }
-                  >
-                  </span>
-                </span>
-                <span
-                  data-action="se"
-                  style={
-                    deepExtend({}, styles.dot, styles.dotSE)
-                  }
-                >
-                  <span
-                    style={
-                      deepExtend({}, styles.dotInner, styles.dotInnerSE)
-                    }
-                  >
-                  </span>
-                </span>
-                <span
-                  data-action="s"
-                  style={
-                    deepExtend({}, styles.dot, styles.dotS)
-                  }
-                >
-                  <span
-                    style={
-                      deepExtend({}, styles.dotInner, styles.dotInnerS)
-                    }
-                  >
-                  </span>
-                </span>
-                <span
-                  data-action="sw"
-                  style={
-                    deepExtend({}, styles.dot, styles.dotSW)
-                  }
-                >
-                  <span
-                    style={
-                      deepExtend({}, styles.dotInner, styles.dotInnerSW)
-                    }
-                  >
-                  </span>
-                </span>
-
-                {/* frame line elements */}
-                <span
-                  data-action="n"
-                  style={
-                    deepExtend({}, styles.line, styles.lineN)
-                  }
-                >
-                </span>
-                <span
-                  data-action="s"
-                  style={
-                    deepExtend({}, styles.line, styles.lineS)
-                  }
-                >
-                </span>
-                <span
-                  data-action="w"
-                  style={
-                    deepExtend({}, styles.line, styles.lineW)
-                  }
-                >
-                </span>
-                <span
-                  data-action="e"
-                  style={
-                    deepExtend({}, styles.line, styles.lineE)
-                  }
-                >
-                </span>
+              )}
+              ref='frameNode'
+            >
+              <div style={this.state.styles.clone}>
+                <img
+                  ref='cloneImg'
+                  width={img_width}
+                  height={img_height}
+                  crossOrigin='anonymous'
+                  src={src}
+                  style={deepExtend({}, this.state.styles.img, {
+                    marginLeft: -this.state.imgLeft,
+                    marginTop: -this.state.imgTop
+                  })}
+                />
               </div>
+              <span
+                style={deepExtend(
+                  {},
+                  this.state.styles.move,
+                  disabled ? { cursor: 'initial' } : {}
+                )}
+                data-action='move'
+              />
+              <span
+                style={deepExtend(
+                  {},
+                  this.state.styles.dot,
+                  this.state.styles.dotCenter,
+                  disabledStyle
+                )}
+                data-action='move'
+              >
+                <span
+                  style={deepExtend(
+                    {},
+                    this.state.styles.dotInner,
+                    this.state.styles.dotInnerCenterVertical
+                  )}
+                />
+                <span
+                  style={deepExtend(
+                    {},
+                    this.state.styles.dotInner,
+                    this.state.styles.dotInnerCenterHorizontal
+                  )}
+                />
+              </span>
+              <span
+                style={deepExtend(
+                  {},
+                  this.state.styles.dot,
+                  this.state.styles.dotNE
+                )}
+                data-action='ne'
+              >
+                <span
+                  style={deepExtend(
+                    {},
+                    this.state.styles.dotInner,
+                    this.state.styles.dotInnerNE,
+                    disabledStyle
+                  )}
+                />
+              </span>
+              <span
+                style={deepExtend(
+                  {},
+                  this.state.styles.dot,
+                  this.state.styles.dotN
+                )}
+                data-action='n'
+              >
+                <span
+                  style={deepExtend(
+                    {},
+                    this.state.styles.dotInner,
+                    this.state.styles.dotInnerN,
+                    disabledStyle
+                  )}
+                />
+              </span>
+              <span
+                style={deepExtend(
+                  {},
+                  this.state.styles.dot,
+                  this.state.styles.dotNW
+                )}
+                data-action='nw'
+              >
+                <span
+                  style={deepExtend(
+                    {},
+                    this.state.styles.dotInner,
+                    this.state.styles.dotInnerNW,
+                    disabledStyle
+                  )}
+                />
+              </span>
+              <span
+                style={deepExtend(
+                  {},
+                  this.state.styles.dot,
+                  this.state.styles.dotE
+                )}
+                data-action='e'
+              >
+                <span
+                  style={deepExtend(
+                    {},
+                    this.state.styles.dotInner,
+                    this.state.styles.dotInnerE,
+                    disabledStyle
+                  )}
+                />
+              </span>
+              <span
+                style={deepExtend(
+                  {},
+                  this.state.styles.dot,
+                  this.state.styles.dotW
+                )}
+                data-action='w'
+              >
+                <span
+                  style={deepExtend(
+                    {},
+                    this.state.styles.dotInner,
+                    this.state.styles.dotInnerW,
+                    disabledStyle
+                  )}
+                />
+              </span>
+              <span
+                style={deepExtend(
+                  {},
+                  this.state.styles.dot,
+                  this.state.styles.dotSE
+                )}
+                data-action='se'
+              >
+                <span
+                  style={deepExtend(
+                    {},
+                    this.state.styles.dotInner,
+                    this.state.styles.dotInnerSE,
+                    disabledStyle
+                  )}
+                />
+              </span>
+              <span
+                style={deepExtend(
+                  {},
+                  this.state.styles.dot,
+                  this.state.styles.dotS
+                )}
+                data-action='s'
+              >
+                <span
+                  style={deepExtend(
+                    {},
+                    this.state.styles.dotInner,
+                    this.state.styles.dotInnerS,
+                    disabledStyle
+                  )}
+                />
+              </span>
+              <span
+                style={deepExtend(
+                  {},
+                  this.state.styles.dot,
+                  this.state.styles.dotSW
+                )}
+                data-action='sw'
+              >
+                <span
+                  style={deepExtend(
+                    {},
+                    this.state.styles.dotInner,
+                    this.state.styles.dotInnerSW,
+                    disabledStyle
+                  )}
+                />
+              </span>
+              <span
+                style={deepExtend(
+                  {},
+                  this.state.styles.line,
+                  this.state.styles.lineN,
+                  disabledStyle
+                )}
+                data-action='n'
+              />
+              <span
+                style={deepExtend(
+                  {},
+                  this.state.styles.line,
+                  this.state.styles.lineS,
+                  disabledStyle
+                )}
+                data-action='s'
+              />
+              <span
+                style={deepExtend(
+                  {},
+                  this.state.styles.line,
+                  this.state.styles.lineW,
+                  disabledStyle
+                )}
+                data-action='w'
+              />
+              <span
+                style={deepExtend(
+                  {},
+                  this.state.styles.line,
+                  this.state.styles.lineE,
+                  disabledStyle
+                )}
+                data-action='e'
+              />
             </div>
-            : null
-        }
+          </div>
+        ) : null}
       </div>
     )
   }
 }
-
 Cropper.propTypes = {
   src: PropTypes.string.isRequired,
   originX: PropTypes.number,
   originY: PropTypes.number,
-  ratio: PropTypes.number,
+  rate: PropTypes.number,
   width: PropTypes.number,
   height: PropTypes.number,
+  imgSize: PropTypes.object,
+  selectionNatural: PropTypes.bool,
   fixedRatio: PropTypes.bool,
   allowNewSelection: PropTypes.bool,
   disabled: PropTypes.bool,
   styles: PropTypes.object,
-  onImgLoad: PropTypes.func,
-  beforeImgLoad: PropTypes.func,
-  onChange: PropTypes.func
+  imageLoaded: PropTypes.func,
+  beforeImageLoaded: PropTypes.func,
+  imageLoadError: PropTypes.func,
+  onDragStop: PropTypes.func
 }
-
 Cropper.defaultProps = {
   width: 200,
   height: 200,
+  selectionNatural: false,
   fixedRatio: true,
   allowNewSelection: true,
-  ratio: 1,
+  rate: 1,
   originX: 0,
   originY: 0,
   styles: {},
-  onImgLoad: function () {},
-  beforeImgLoad: function () {}
+  imageLoaded: function () {},
+  beforeImageLoaded: function () {},
+  imageLoadError: function () {},
+  onDragStop: function () {}
 }
 
-/*
-default inline styles
-*/
-const defaultStyles = {
+var defaultStyles = {
   container: {},
   img: {
     userDrag: 'none',
@@ -925,7 +907,6 @@ const defaultStyles = {
     WebkitPerspective: 1000,
     WebkitBackfaceVisibility: 'hidden'
   },
-
   clone: {
     width: '100%',
     height: '100%',
@@ -934,7 +915,6 @@ const defaultStyles = {
     left: 0,
     top: 0
   },
-
   frame: {
     position: 'absolute',
     left: 0,
@@ -943,19 +923,15 @@ const defaultStyles = {
     right: 0,
     display: 'none'
   },
-
   dragging_frame: {
     opacity: 0.8
   },
-
   source: {
     overflow: 'hidden'
   },
-
   source_img: {
     float: 'left'
   },
-
   modal: {
     position: 'absolute',
     left: 0,
@@ -963,12 +939,10 @@ const defaultStyles = {
     bottom: 0,
     right: 0,
     opacity: 0.4,
-    backgroundColor: '#000'
+    backgroundColor: '#222'
   },
   modal_disabled: {
-    backgroundColor: '#666',
-    opacity: 0.7,
-    cursor: 'not-allowed'
+    opacity: 0
   },
   move: {
     position: 'absolute',
@@ -980,7 +954,6 @@ const defaultStyles = {
     outline: '1px dashed #88f',
     backgroundColor: 'transparent'
   },
-
   dot: {
     zIndex: 10
   },
@@ -1012,7 +985,6 @@ const defaultStyles = {
     backgroundColor: 'transparent',
     cursor: 'move'
   },
-
   dotInner: {
     border: '1px solid #88f',
     background: '#fff',
@@ -1023,7 +995,6 @@ const defaultStyles = {
     margin: 0,
     position: 'absolute'
   },
-
   dotInnerN: {
     top: -4,
     left: '50%',
@@ -1082,13 +1053,12 @@ const defaultStyles = {
     marginLeft: -4,
     marginTop: -1
   },
-
+  fixedRatio: true,
   line: {
     position: 'absolute',
     display: 'block',
     zIndex: 100
   },
-
   lineS: {
     cursor: 's-resize',
     bottom: 0,
@@ -1123,4 +1093,4 @@ const defaultStyles = {
   }
 }
 
-module.exports = Cropper
+export default Cropper

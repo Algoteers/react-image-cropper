@@ -1,8 +1,5 @@
 'use strict';
 
-var Cropper = require('./lib/Cropper');
+import Cropper from './lib/Cropper';
 
-module.exports = {
-    Cropper: Cropper
-};
-
+export default Cropper;

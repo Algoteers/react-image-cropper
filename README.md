@@ -1,6 +1,7 @@
 
-# collaborators wanted
-I have barely no time work on improve this project, needs collaborators for project maintenance.
+# Forked from original [React Image Cropper](https://github.com/jerryshew/react-image-cropper/blob/master/LICENSE)
+Package no longer seemed to be maintained and required upgrading of package npm-run-all from critical security vulnerability.
+Also merged in [LiHuang2's react16update](https://github.com/lihuang2/react-image-cropper.git) branch.
 
 ## React Image Cropper
 
@@ -14,11 +15,11 @@ Touch supported
 
 Custom:
 
-+ initial cropper frame position 
++ initial cropper frame position
 + frame width, height, ratio
 + crop event
 
-### Hot to Use
+### How to Use
 
 + `import {Cropper} from 'react-image-cropper'`
 
@@ -27,8 +28,8 @@ Custom:
 + define Cropper with src, and ref to execute crop method  
 
 ```
-<Cropper 
-    src="http://braavos.me/images/posts/college-rock/the-smiths.png" 
+<Cropper
+    src="http://braavos.me/images/posts/college-rock/the-smiths.png"
     ref={ ref => { this.cropper = ref }}
 />
 ```
@@ -41,7 +42,7 @@ Custom:
 
 `const values = this.cropper.values()`
 
-values: 
+values:
 
 ```
 {
@@ -75,18 +76,19 @@ values:
 
 | prop  |  value   |
 |:-------:|:--------|
-| ratio | width / height |
+| rate | width / height |
+| disabled | boolean |
 | width | cropper frame width |
 | height | cropper frame height |
-| originX | cropper original position(x axis), accroding to image left|
-| originY | cropper original position(Y axis), accroding to image top|
+| originX | cropper original position(x axis), accroding to image left |
+| originY | cropper original position(Y axis), accroding to image top |
 | fixedRatio | turn on/off fixed ratio (bool default true) |
 | allowNewSelection | allow user to create a new selection instead of reusing initial selection (bool default true) |
 | styles | specify styles to override inline styles |
-| onImgLoad | specify fuction callback to run when the image completed loading |
-| beforeImgload | specify function callback to run when the image size value is ready but image is not completed loading |
-| onChange | triggred when dragging stop, get values of cropper |
+| imageLoaded | specify fuction callback to run when the image completed loading |
+| beforeImageLoaded | specify function callback to run when the image size value is ready but the image has not completed loading |
+| imageLoadError | specify function callback to run when the image errors during loading |
+| onDragStop | specify function callback to run when dragging the crop has ended |
 
 
 **[See the demo](http://braavos.me/react-image-cropper/)**
-

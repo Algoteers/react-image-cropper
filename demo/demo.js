@@ -3,245 +3,156 @@ import ReactDOM from 'react-dom'
 import './demo.less'
 import Cropper from '../component/Cropper'
 
-const DemoImg = 'https://braavos.me/images/posts/gr/8.jpg'
-
+const src = "dist/demo.jpg";
+const srcTall = 'dist/tallimage.jpg';
 class ImageCropDemo extends Component {
-  constructor (props) {
-    super(props)
-    this.state = {
-      imgSrc: DemoImg,
-      image: '',
-      imageLoaded: false,
-      image1: '',
-      imageL1oaded: false,
-      image2: '',
-      image2Loaded: false,
-      image3: '',
-      image3Loaded: false,
-      image4: '',
-      image4Loaded: false,
-      image4BeforeLoaded: false,
-      image4Values: ''
+    constructor(props) {
+        super(props);
+        this.state = {
+            image: '',
+            imageLoaded: false,
+            image1: '',
+            imageL1oaded: false,
+            image2: '',
+            image2Loaded: false,
+            image3: '',
+            image3Loaded: false,
+            image4: '',
+            image4Loaded: false,
+            image4BeforeLoaded: false,
+            image4Values: '',
+            imgSize: {
+                default_width: 309,
+                default_height: 309
+            }
+        }
     }
-  }
+    OnImageLoaded(state){
+        this.setState({
+            [state + 'Loaded']: true
+        });
+    }
 
-  handleImageLoaded (state) {
-    this.setState({
-      [state + 'Loaded']: true
-    })
-  }
+    OnBeforeImageLoaded(state){
+        let newState = {
+            [state + 'BeforeLoaded']: true
+        };
+        this.setState(newState);
+    }
 
-  handleBeforeImageLoad (state) {
-    this.setState({
-      [state + 'BeforeLoaded']: true
-    })
-  }
+    OnImageLoadError(e) {
+        console.error(e);
+    }
 
-  handleClick (state) {
-    let node = this[state]
-    this.setState({
-      [state]: node.crop()
-    })
-  }
+    OnClick(state){
+        let node = this.refs[state];
+        this.setState({
+            [state]: node.crop()
+        });
+    }
 
-  handleChange (state, values) {
-    this.setState({
-      [state + 'Values']: values
-    })
-  }
+    OnClickValues(state){
+        let node = this.refs[state];
+        this.setState({
+            [state + 'Values']: node.values()
+        });
+    }
+    render() {
 
-  handleGetValues (state) {
-    let node = this[state]
-    this.setState({
-      [state + 'Values']: node.values()
-    })
-  }
-
-  render () {
-    return (
-      <ul>
-        <li>
-          <h3>Default image crop</h3>
-          <Cropper src={this.state.imgSrc}
-            ref={ref => { this.image = ref }}
-            onImgLoad={() => this.handleImageLoaded('image')}
-          />
-          <br/>
-          {
-            this.state.imageLoaded
-              ? <button
-                onClick={() => this.handleClick('image')}
-              >
-              crop
-              </button>
-              : null
-          }
-          <h4>after crop</h4>
-          {
-            this.state.image
-              ? <img
-                className="after-img"
-                src={this.state.image}
-                alt=""
-              />
-              : null
-          }
-        </li>
-        <li>
-          <h3>With given origin X and Y</h3>
-          <Cropper
-            src={this.state.imgSrc}
-            originX={100}
-            originY={100}
-            ref={ref => { this.image1 = ref }}
-            onImgLoad={() => this.handleImageLoaded('image1')}
-          />
-
-          {
-            this.state.image1Loaded
-              ? <button
-                onClick={() => this.handleClick('image1')}
-              >
-              crop
-              </button>
-              : null
-          }
-          <br/>
-          <h4>after crop</h4>
-          {
-            this.state.image1
-              ? <img
-                className="after-img"
-                src={this.state.image1}
-                alt=""
-              />
-              : null
-          }
-        </li>
-        <li>
-          <h3>With given ratio</h3>
-          <Cropper
-            src={this.state.imgSrc}
-            ratio={16 / 9}
-            width={300}
-            ref={ref => { this.image2 = ref }}
-            onImgLoad={() => this.handleImageLoaded('image2')}
-          />
-          <br/>
-          {
-            this.state.image2Loaded
-              ? <button
-                onClick={() => this.handleClick('image2')}
-              >
-              crop
-              </button>
-              : null
-          }
-          <h4>after crop</h4>
-          {
-            this.state.image2
-              ? <img
-                className="after-img"
-                src={this.state.image2}
-                alt=""
-              />
-              : null
-          }
-        </li>
-        <li>
-          <h3>Disabled</h3>
-          <Cropper
-            src={this.state.imgSrc}
-            ref={ref => { this.image3 = ref }}
-            disabled
-          />
-        </li>
-        <li>
-          <h3>{`Variable width and height, cropper frame is relative to natural image size, don't allow new
-                        selection, set custom styles`}</h3>
-          <Cropper
-            src={this.state.imgSrc}
-            width={200}
-            height={500}
-            originX={200}
-            originY={50}
-            fixedRatio={false}
-            allowNewSelection={false}
-            onChange={values => this.handleChange('image4', values)}
-            styles={{
-              source_img: {
-                WebkitFilter: 'blur(3.5px)',
-                filter: 'blur(3.5px)'
-              },
-              modal: {
-                opacity: 0.5,
-                backgroundColor: '#fff'
-              },
-              dotInner: {
-                borderColor: '#ff0000'
-              },
-              dotInnerCenterVertical: {
-                backgroundColor: '#ff0000'
-              },
-              dotInnerCenterHorizontal: {
-                backgroundColor: '#ff0000'
-              }
-            }}
-            ref={ref => { this.image4 = ref }}
-            onImgLoad={() => this.handleImageLoaded('image4')}
-            beforeImgLoad={() => this.handleBeforeImageLoad('image4')}
-          />
-          <br/>
-          {
-            this.state.image4BeforeLoaded
-              ? <button
-                onClick={() => this.handleGetValues('image4')}
-              >
-              values
-              </button>
-              : null
-          }
-          <h4>values</h4>
-          {
-            this.state.image4Values
-              ? <pre
-                style={{
-                  padding: '10px',
-                  backgroundColor: '#eee',
-                  overflow: 'scroll'
-                }}
-              >
-                {JSON.stringify(this.state.image4Values)}
-              </pre>
-              : null
-          }
-          {
-            this.state.image4Loaded
-              ? <button
-                onClick={() => this.handleClick('image4')}
-              >
-              crop
-              </button>
-              : null
-          }
-          <h4>after crop</h4>
-          {
-            this.state.image4
-              ? <img
-                className="after-img"
-                src={this.state.image4}
-                alt=""
-              />
-              : null
-          }
-        </li>
-      </ul>
-    )
-  }
+        return (
+            <ul>
+                <li>
+                    <h3>Default image crop</h3>
+                    <Cropper src={src} ref="image" imageLoaded={() => this.OnImageLoaded('image')}/>
+                    <br/>
+                    {this.state.imageLoaded ? <button onClick={() => this.OnClick('image')}>crop</button> : null}
+                    <h4>after crop</h4>
+                    {this.state.image ? <img width="200" src={this.state.image} alt=""/> : null}
+                </li>
+                <li>
+                    <h3>With given origin X and Y</h3>
+                    <Cropper src={src} originX={100} originY={100} ref="image1"
+                             imageLoaded={() => this.OnImageLoaded('image1')}/>
+                    {this.state.image1Loaded ? <button onClick={() => this.OnClick('image1')}>crop</button> : null}
+                    <br/>
+                    <h4>after crop</h4>
+                    {this.state.image1 ? <img width="200" src={this.state.image1} alt=""/> : null}
+                </li>
+                <li>
+                    <h3>With given rate</h3>
+                    <Cropper src={src} rate={16 / 9} width={500} ref="image2"
+                             imageLoaded={() => this.OnImageLoaded('image2')}/>
+                    <br/>
+                    {this.state.image2Loaded ? <button onClick={() => this.OnClick('image2')}>crop</button> : null}
+                    <h4>after crop</h4>
+                    {this.state.image2 ? <img width="200" src={this.state.image2} alt=""/> : null}
+                </li>
+                <li>
+                    <h3>Disabled</h3>
+                    <Cropper src={src} ref="image3" disabled={true}/>
+                </li>
+                <li>
+                    <h3>Missing source</h3>
+                    <Cropper src={'404.jpg'} ref="image5" imageLoadError={this.OnImageLoadError}/>
+                </li>
+                <li>
+                    <h3>Variable width and height, cropper frame is relative to natural image size, don't allow new
+                        selection, set custom styles</h3>
+                    <div style={styles.image4Wrapper}>
+                        <Cropper src={srcTall}
+                                 width={320}
+                                 height={240}
+                                 imgSize={this.state.imgSize}
+                                 originX={650}
+                                 originY={386}
+                                 fixedRatio={false}
+                                 selectionNatural={true}
+                                 allowNewSelection={false}
+                                 styles={styles.cropper}
+                                 ref="image4"
+                                 imageLoaded={() => this.OnImageLoaded('image4')}
+                                 beforeImageLoaded={() => this.OnBeforeImageLoaded('image4')}
+                        />
+                    </div>
+                    <br/>
+                    {this.state.image4BeforeLoaded ?
+                        <button onClick={() => this.OnClickValues('image4')}>values</button> : null}
+                    <h4>values</h4>
+                    {this.state.image4Values ? <p>{JSON.stringify(this.state.image4Values)}</p> : null}
+                    {this.state.image4Loaded ? <button onClick={() => this.OnClick('image4')}>crop</button> : null}
+                    <h4>after crop</h4>
+                    {this.state.image4 ? <img width="200" src={this.state.image4} alt=""/> : null}
+                </li>
+            </ul>
+        );
+    }
 }
 
+const styles = {
+    image4Wrapper: {
+    },
+    cropper: {
+        source_img: {
+            WebkitFilter: 'blur(3.5px)',
+            filter: 'blur(3.5px)'
+        },
+        modal: {
+            opacity: 0.5,
+            backgroundColor: '#fff'
+        },
+        dotInner: {
+            borderColor: '#ff0000'
+        },
+        dotInnerCenterVertical: {
+            backgroundColor: '#ff0000'
+        },
+        dotInnerCenterHorizontal: {
+            backgroundColor: '#ff0000'
+        }
+    }
+};
 if (module.hot) {
-  module.hot.accept()
+    module.hot.accept()
 }
 
 ReactDOM.render(<ImageCropDemo/>, document.getElementById('root'))
