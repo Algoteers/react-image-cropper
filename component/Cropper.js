@@ -3,6 +3,9 @@ import ReactDOM from 'react-dom'
 import deepExtend from 'deep-extend'
 import PropTypes from 'prop-types'
 
+let imgRef
+let frameNodeRef
+
 class Cropper extends React.Component {
   constructor (props) {
     super(props)
@@ -66,7 +69,7 @@ class Cropper extends React.Component {
     let frameWidth = this.state.frameWidth || img_width
     let frameHeight = this.state.frameHeight || img_height / 4
     if (selectionNatural) {
-      let img = ReactDOM.findDOMNode(this.refs.img)
+      let img = imgRef
       const _rateWidth = img_width / img.naturalWidth
       const _rateHeight = img_height / img.naturalHeight
       const realWidth = Number(frameWidth * _rateWidth)
@@ -208,7 +211,7 @@ class Cropper extends React.Component {
   imgGetSizeBeforeLoad () {
     var that = this
     setTimeout(function () {
-      let img = ReactDOM.findDOMNode(that.refs.img)
+      let img = imgRef
       if (img && img.naturalWidth) {
         const { beforeImageLoaded } = that.state
 
@@ -351,7 +354,7 @@ class Cropper extends React.Component {
       })
     }
     if (!action && allowNewSelection) {
-      let container = ReactDOM.findDOMNode(this.refs.container)
+      let container = this.container
       const { offsetLeft, offsetTop } = container
       this.setState(
         {
@@ -371,7 +374,7 @@ class Cropper extends React.Component {
   handleDragStop (e) {
     if (this.state.dragging) {
       e.preventDefault()
-      const frameNode = ReactDOM.findDOMNode(this.refs.frameNode)
+      const frameNode = frameNodeRef
       const { offsetLeft, offsetTop, offsetWidth, offsetHeight } = frameNode
       const { img_width, img_height, onDragStop } = this.state
       this.setState(
@@ -398,6 +401,7 @@ class Cropper extends React.Component {
     document.addEventListener('mouseup', this.handleDragStop.bind(this))
     document.addEventListener('touchend', this.handleDragStop.bind(this))
     this.imgGetSizeBeforeLoad()
+    console.log('CDM: ', imgRef, frameNodeRef)
   }
   componentWillUnmount () {
     document.removeEventListener('mousemove', this.handleDrag.bind(this))
@@ -516,7 +520,7 @@ class Cropper extends React.Component {
   crop () {
     const { frameWidth, frameHeight, originX, originY, img_width } = this.state
     let canvas = document.createElement('canvas')
-    let img = ReactDOM.findDOMNode(this.refs.img)
+    let img = imgRef
     const _rate = img.naturalWidth / img_width
     const realWidth = frameWidth * _rate
     const realHeight = frameHeight * _rate
@@ -555,7 +559,7 @@ class Cropper extends React.Component {
       originalFrameHeight
     } = this.state
 
-    let img = ReactDOM.findDOMNode(this.refs.img)
+    let img = imgRef
     let _return = null
 
     var thisOriginX = moved ? originX : originalOriginX
@@ -590,7 +594,7 @@ class Cropper extends React.Component {
     const imageNode = (
       <div
         style={this.state.styles.source}
-        ref={inst => (this.refs.sourceNode = inst)}
+        ref={inst => this.sourceNodeRef = inst}
       >
         <img
           crossOrigin='anonymous'
@@ -600,7 +604,7 @@ class Cropper extends React.Component {
             this.state.styles.img,
             this.state.styles.source_img
           )}
-          ref={inst => (this.refs.img = inst)}
+          ref={inst => imgRef = inst}
           onLoad={this.imgOnLoad}
           onError={this.imgOnError}
           width={img_width}
@@ -613,7 +617,7 @@ class Cropper extends React.Component {
 
     return (
       <div
-        ref={inst => (this.refs.container = inst)}
+        ref={inst => this.containerRef = inst}
         onMouseDown={disabled ? undefined : this.handleDragStart}
         onTouchStart={disabled ? undefined : this.handleDragStart}
         style={deepExtend({}, this.state.styles.container, {
@@ -638,11 +642,11 @@ class Cropper extends React.Component {
                   height: this.state.imgHeight
                 }
               )}
-              ref={inst => (this.refs.frameNode = inst)}
+              ref={inst => frameNodeRef = inst}
             >
               <div style={this.state.styles.clone}>
                 <img
-                  ref={inst => (this.refs.cloneImg = inst)}
+                  ref={inst => this.cloneImgRef = inst}
                   width={img_width}
                   height={img_height}
                   crossOrigin='anonymous'

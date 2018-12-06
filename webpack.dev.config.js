@@ -14,7 +14,12 @@ module.exports = {
     filename: 'app.js',
     publicPath: publicPath
   },
-
+  resolve: {
+    alias: {
+      'react': path.resolve('./node_modules/react'),
+      'react-router-dom': path.resolve('./node_modules/react-router-dom')
+    }
+  },
   plugins: [
     new webpack.NamedModulesPlugin(),
     new webpack.HotModuleReplacementPlugin({ multiStep: false })
