@@ -5,7 +5,7 @@
       "version": "latest"
     }
   },
-  "extends": ["standard", "standard-react"],
+  "extends": ["standard", "standard-react", "plugin:react/recommended"],
   rules: {
     'react/jsx-boolean-value': 0
   }
