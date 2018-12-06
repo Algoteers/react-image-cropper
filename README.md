@@ -73,7 +73,7 @@ values:
 
 | prop  |  value   |
 |:-------:|:--------|
-| ratio | width / height |
+| rate | width / height |
 | disabled | boolean |
 | width | cropper frame width |
 | height | cropper frame height |
