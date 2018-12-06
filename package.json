@@ -5,10 +5,11 @@
   "main": "app.js",
   "scripts": {
     "start": "npm-run-all --parallel babel server",
-    "server": "cross-env NODE_ENV=dev node server.js",
+    "server": "cross-env NODE_ENV=development PORT=3001 webpack-serve --config ./webpack.dev.config.js",
     "babel": "babel --watch component/ --out-dir lib/",
     "build": "NODE_ENV=production webpack --mode production --config ./webpack.config.js",
-    "lint": "prettier-standard 'component/*.js'"
+    "lint": "prettier-standard 'component/*.js'",
+    "lint-demo": "prettier-standard 'demo/*.js'"
   },
   "repository": {
     "type": "git",
@@ -47,6 +48,7 @@
     "babel-plugin-dynamic-import-node": "^2.2.0",
     "babel-polyfill": "^6.26.0",
     "babel-runtime": "^6.26.0",
+    "connect-history-api-fallback": "^1.5.0",
     "cross-env": "^1.0.8",
     "css-loader": "^0.28.11",
     "eslint": "^5.9.0",
@@ -67,10 +69,12 @@
     "less-loader": "^4.1.0",
     "mini-css-extract-plugin": "^0.4.4",
     "node-sass": "^4.11.0",
+    "optimize-css-assets-webpack-plugin": "^5.0.1",
     "postcss-loader": "^2.1.6",
     "pre-commit": "^1.2.2",
     "prettier": "^1.15.3",
     "prettier-standard": "^8.0.1",
+    "react-hot-loader": "^4.3.12",
     "react-transform-hmr": "^1.0.0",
     "sass-loader": "^6.0.7",
     "style-loader": "^0.21.0",
