@@ -401,7 +401,6 @@ class Cropper extends React.Component {
     document.addEventListener('mouseup', this.handleDragStop.bind(this))
     document.addEventListener('touchend', this.handleDragStop.bind(this))
     this.imgGetSizeBeforeLoad()
-    console.log('CDM: ', imgRef, frameNodeRef)
   }
   componentWillUnmount () {
     document.removeEventListener('mousemove', this.handleDrag.bind(this))
@@ -594,7 +593,7 @@ class Cropper extends React.Component {
     const imageNode = (
       <div
         style={this.state.styles.source}
-        ref={inst => this.sourceNodeRef = inst}
+        ref={inst => (this.sourceNodeRef = inst)}
       >
         <img
           crossOrigin='anonymous'
@@ -604,7 +603,7 @@ class Cropper extends React.Component {
             this.state.styles.img,
             this.state.styles.source_img
           )}
-          ref={inst => imgRef = inst}
+          ref={inst => (imgRef = inst)}
           onLoad={this.imgOnLoad}
           onError={this.imgOnError}
           width={img_width}
@@ -617,7 +616,7 @@ class Cropper extends React.Component {
 
     return (
       <div
-        ref={inst => this.containerRef = inst}
+        ref={inst => (this.containerRef = inst)}
         onMouseDown={disabled ? undefined : this.handleDragStart}
         onTouchStart={disabled ? undefined : this.handleDragStart}
         style={deepExtend({}, this.state.styles.container, {
@@ -642,11 +641,11 @@ class Cropper extends React.Component {
                   height: this.state.imgHeight
                 }
               )}
-              ref={inst => frameNodeRef = inst}
+              ref={inst => (frameNodeRef = inst)}
             >
               <div style={this.state.styles.clone}>
                 <img
-                  ref={inst => this.cloneImgRef = inst}
+                  ref={inst => (this.cloneImgRef = inst)}
                   width={img_width}
                   height={img_height}
                   crossOrigin='anonymous'
