@@ -5,8 +5,14 @@
       "version": "latest"
     }
   },
-  "extends": ["standard", "standard-react", "plugin:react/recommended"],
+  "plugins": ["react"],
+  "extends": ["standard", "standard-react"],
   rules: {
     'react/jsx-boolean-value': 0
+  },
+  "parserOptions": {
+    "ecmaFeatures": {
+      "jsx": true
+    }
   }
 }

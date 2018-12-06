@@ -588,7 +588,7 @@ class Cropper extends React.Component {
     const { src, disabled } = this.props
 
     const imageNode = (
-      <div style={this.state.styles.source} ref='sourceNode'>
+      <div style={this.state.styles.source} ref={inst => this.refs.sourceNode = inst}>
         <img
           crossOrigin='anonymous'
           src={src}
@@ -597,7 +597,7 @@ class Cropper extends React.Component {
             this.state.styles.img,
             this.state.styles.source_img
           )}
-          ref='img'
+          ref={inst => this.refs.img = inst}
           onLoad={this.imgOnLoad}
           onError={this.imgOnError}
           width={img_width}
@@ -610,7 +610,7 @@ class Cropper extends React.Component {
 
     return (
       <div
-        ref='container'
+        ref={inst => this.refs.container = inst}
         onMouseDown={disabled ? undefined : this.handleDragStart}
         onTouchStart={disabled ? undefined : this.handleDragStart}
         style={deepExtend({}, this.state.styles.container, {
@@ -635,11 +635,11 @@ class Cropper extends React.Component {
                   height: this.state.imgHeight
                 }
               )}
-              ref='frameNode'
+              ref={inst => this.refs.frameNode = inst}
             >
               <div style={this.state.styles.clone}>
                 <img
-                  ref='cloneImg'
+                  ref={inst => this.refs.cloneImg = inst}
                   width={img_width}
                   height={img_height}
                   crossOrigin='anonymous'
